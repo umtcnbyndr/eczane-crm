@@ -13,7 +13,7 @@ from decimal import Decimal
 from datetime import datetime
 from django.utils import timezone
 
-from ..models import Customer, Product, SalesTransaction, ExcelUpload
+from ..models import Customer, Product, SalesTransaction, ExcelUpload, Brand
 
 
 class ExcelParserService:
@@ -353,8 +353,9 @@ class ExcelParserService:
                 skipped += 1
                 continue
 
-            # Kategori tahmini
+            # Kategori tahmini ve marka algılama
             category = self._guess_category(product_name)
+            brand = self._detect_brand(product_name)
 
             try:
                 # Barkod veya ürün koduna göre oluştur/güncelle
@@ -365,6 +366,7 @@ class ExcelParserService:
                         'name': product_name,
                         'product_code': product_code,
                         'category': category,
+                        'brand': brand,
                     }
                 )
                 if is_created:
@@ -374,6 +376,11 @@ class ExcelParserService:
             except Exception as e:
                 failed += 1
                 continue
+
+        # Marka ürün sayılarını güncelle
+        for brand_obj in Brand.objects.all():
+            brand_obj.product_count = brand_obj.products.count()
+            brand_obj.save()
 
         return {
             'rows_processed': created + updated,
@@ -415,6 +422,76 @@ class ExcelParserService:
                 return 'OTC'
 
         return 'ILAC'
+
+    def _detect_brand(self, product_name: str) -> Brand:
+        """Ürün adından marka algıla ve Brand objesi döndür."""
+        if not product_name:
+            return None
+
+        name_lower = product_name.lower()
+
+        # Bilinen marka listesi - (arama_kelimesi, marka_adı, kategori, premium)
+        known_brands = [
+            # Dermo-Kozmetik Premium
+            ('skinceuticals', 'SkinCeuticals', 'DERMO', True),
+            ('la roche', 'La Roche-Posay', 'DERMO', True),
+            ('vichy', 'Vichy', 'DERMO', True),
+            ('bioderma', 'Bioderma', 'DERMO', True),
+            ('avene', 'Avene', 'DERMO', True),
+            ('eucerin', 'Eucerin', 'DERMO', True),
+            ('cerave', 'CeraVe', 'DERMO', False),
+            ('uriage', 'Uriage', 'DERMO', True),
+            ('ducray', 'Ducray', 'DERMO', True),
+            ('nuxe', 'Nuxe', 'DERMO', True),
+            ('lierac', 'Lierac', 'DERMO', True),
+            ('filorga', 'Filorga', 'DERMO', True),
+            ('isdin', 'ISDIN', 'DERMO', True),
+            ('svr', 'SVR', 'DERMO', True),
+            ('klorane', 'Klorane', 'DERMO', False),
+            ('mustela', 'Mustela', 'DERMO', False),
+            ('aderma', 'A-Derma', 'DERMO', False),
+            ('noreva', 'Noreva', 'DERMO', False),
+            ('dercos', 'Vichy Dercos', 'DERMO', True),
+
+            # Vitamin/Takviye
+            ('solgar', 'Solgar', 'VITAMIN', True),
+            ('youplus', 'Youplus', 'VITAMIN', False),
+            ('ocean', 'Ocean', 'VITAMIN', False),
+            ('nature', 'Nature\'s', 'VITAMIN', False),
+            ('centrum', 'Centrum', 'VITAMIN', False),
+            ('supradyn', 'Supradyn', 'VITAMIN', False),
+            ('vitabiotics', 'Vitabiotics', 'VITAMIN', False),
+            ('orzax', 'Orzax', 'VITAMIN', False),
+            ('nutraxin', 'Nutraxin', 'VITAMIN', False),
+
+            # Mama
+            ('aptamil', 'Aptamil', 'MAMA', False),
+            ('bebelac', 'Bebelac', 'MAMA', False),
+            ('hero baby', 'Hero Baby', 'MAMA', False),
+            ('hipp', 'HiPP', 'MAMA', False),
+            ('humana', 'Humana', 'MAMA', False),
+
+            # İlaç markaları
+            ('bayer', 'Bayer', 'ILAC', False),
+            ('pfizer', 'Pfizer', 'ILAC', False),
+            ('novartis', 'Novartis', 'ILAC', False),
+            ('roche', 'Roche', 'ILAC', False),
+            ('abdi ibrahim', 'Abdi İbrahim', 'ILAC', False),
+        ]
+
+        for search_term, brand_name, category, is_premium in known_brands:
+            if search_term in name_lower:
+                # Marka bul veya oluştur
+                brand, created = Brand.objects.get_or_create(
+                    name=brand_name,
+                    defaults={
+                        'category': category,
+                        'is_premium': is_premium
+                    }
+                )
+                return brand
+
+        return None
 
     def parse_customer_sales(self, filepath: str) -> dict:
         """

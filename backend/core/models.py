@@ -7,6 +7,33 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+class Brand(models.Model):
+    """Marka modeli."""
+
+    CATEGORY_CHOICES = [
+        ('DERMO', 'Dermo-Kozmetik'),
+        ('ILAC', 'İlaç'),
+        ('VITAMIN', 'Vitamin/Takviye'),
+        ('MAMA', 'Mama'),
+        ('OTHER', 'Diğer'),
+    ]
+
+    name = models.CharField('Marka Adı', max_length=100, unique=True)
+    category = models.CharField('Kategori', max_length=20, choices=CATEGORY_CHOICES, default='OTHER')
+    is_premium = models.BooleanField('Premium Marka', default=False)
+    product_count = models.IntegerField('Ürün Sayısı', default=0)
+
+    created_at = models.DateTimeField('Oluşturulma', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Marka'
+        verbose_name_plural = 'Markalar'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class Customer(models.Model):
     """Müşteri modeli."""
 
@@ -85,7 +112,8 @@ class Product(models.Model):
     barcode = models.CharField('Barkod', max_length=50, unique=True)
     product_code = models.CharField('Ürün Kodu', max_length=50, blank=True)
     name = models.CharField('Ürün Adı', max_length=255)
-    brand = models.CharField('Marka', max_length=100, blank=True)
+    brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name='products', verbose_name='Marka')
 
     category = models.CharField('Kategori', max_length=20, choices=CATEGORY_CHOICES, default='OTHER')
     kdv_rate = models.IntegerField('KDV Oranı', default=10)

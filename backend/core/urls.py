@@ -7,7 +7,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CustomerViewSet, ProductViewSet, SalesTransactionViewSet,
     StaffViewSet, TaskViewSet, ExcelUploadView, ExcelUploadListView,
-    DashboardView, ResetDataView, generate_replenishment_tasks, update_customer_segments
+    DashboardView, ResetDataView, BrandViewSet,
+    generate_replenishment_tasks, update_customer_segments
 )
 
 router = DefaultRouter()
@@ -16,6 +17,7 @@ router.register(r'products', ProductViewSet)
 router.register(r'sales', SalesTransactionViewSet)
 router.register(r'staff', StaffViewSet)
 router.register(r'tasks', TaskViewSet)
+router.register(r'brands', BrandViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

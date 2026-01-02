@@ -10,14 +10,31 @@ from django.utils import timezone
 from django.db.models import Count, Sum, Q
 from datetime import timedelta
 
-from .models import Customer, Product, SalesTransaction, Staff, Task, ExcelUpload
+from .models import Customer, Product, SalesTransaction, Staff, Task, ExcelUpload, Brand
 from .serializers import (
     CustomerSerializer, CustomerListSerializer, ProductSerializer,
     SalesTransactionSerializer, StaffSerializer, TaskSerializer,
     TaskCreateSerializer, TaskCompleteSerializer, ExcelUploadSerializer,
-    DashboardStatsSerializer, LeaderboardSerializer
+    DashboardStatsSerializer, LeaderboardSerializer, BrandSerializer
 )
 from .services.excel_parser import ExcelParserService
+
+
+class BrandViewSet(viewsets.ModelViewSet):
+    """Marka API."""
+    queryset = Brand.objects.all()
+    serializer_class = BrandSerializer
+
+    def get_queryset(self):
+        queryset = Brand.objects.annotate(
+            actual_product_count=Count('products')
+        ).order_by('-actual_product_count')
+
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+
+        return queryset
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
@@ -298,6 +315,9 @@ class ResetDataView(APIView):
         products_count = Product.objects.count()
         Product.objects.all().delete()
 
+        brands_count = Brand.objects.count()
+        Brand.objects.all().delete()
+
         customers_count = Customer.objects.count()
         Customer.objects.all().delete()
 
@@ -313,6 +333,7 @@ class ResetDataView(APIView):
             'deleted': {
                 'transactions': transactions_count,
                 'products': products_count,
+                'brands': brands_count,
                 'customers': customers_count,
                 'uploads': uploads_count,
                 'tasks': tasks_count,

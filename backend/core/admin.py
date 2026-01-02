@@ -2,7 +2,15 @@
 Admin configuration for SmartPharmacy CRM.
 """
 from django.contrib import admin
-from .models import Customer, Product, SalesTransaction, Staff, Task, ExcelUpload
+from .models import Customer, Product, SalesTransaction, Staff, Task, ExcelUpload, Brand
+
+
+@admin.register(Brand)
+class BrandAdmin(admin.ModelAdmin):
+    list_display = ['name', 'category', 'is_premium', 'product_count', 'created_at']
+    list_filter = ['category', 'is_premium']
+    search_fields = ['name']
+    ordering = ['-product_count']
 
 
 @admin.register(Customer)

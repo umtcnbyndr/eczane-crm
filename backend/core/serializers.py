@@ -2,7 +2,15 @@
 Serializers for SmartPharmacy CRM API.
 """
 from rest_framework import serializers
-from .models import Customer, Product, SalesTransaction, Staff, Task, ExcelUpload
+from .models import Customer, Product, SalesTransaction, Staff, Task, ExcelUpload, Brand
+
+
+class BrandSerializer(serializers.ModelSerializer):
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+
+    class Meta:
+        model = Brand
+        fields = ['id', 'name', 'category', 'category_display', 'is_premium', 'product_count', 'created_at']
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -30,11 +38,12 @@ class CustomerListSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     category_display = serializers.CharField(source='get_category_display', read_only=True)
+    brand_name = serializers.CharField(source='brand.name', read_only=True, default='')
 
     class Meta:
         model = Product
         fields = [
-            'id', 'barcode', 'product_code', 'name', 'brand',
+            'id', 'barcode', 'product_code', 'name', 'brand', 'brand_name',
             'category', 'category_display', 'kdv_rate',
             'stock_quantity', 'unit_price', 'usage_duration',
             'created_at', 'updated_at'
