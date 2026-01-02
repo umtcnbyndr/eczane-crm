@@ -255,7 +255,18 @@ class ExcelUploadView(APIView):
             excel_upload.processed_at = timezone.now()
             excel_upload.save()
 
-            return Response(ExcelUploadSerializer(excel_upload).data)
+            # Include debug info in response
+            response_data = ExcelUploadSerializer(excel_upload).data
+            response_data['debug'] = {
+                'total_rows': result.get('debug_total_rows', 0),
+                'customer_rows': result.get('debug_customer_rows', 0),
+                'header_rows': result.get('debug_header_rows', 0),
+                'product_rows': result.get('debug_product_rows', 0),
+                'transactions_created': result.get('transactions_created', 0),
+                'products_created': result.get('products_created', 0),
+                'customers_created': result.get('customers_created', 0),
+            }
+            return Response(response_data)
 
         except Exception as e:
             excel_upload.status = 'FAILED'

@@ -435,6 +435,14 @@ class ExcelParserService:
         import logging
         logger = logging.getLogger(__name__)
 
+        # Debug counters
+        debug_total_rows = len(rows)
+        debug_customer_rows_found = 0
+        debug_header_rows_found = 0
+        debug_product_rows_found = 0
+
+        logger.info(f"Starting parse_customer_sales with {debug_total_rows} total rows")
+
         for row in rows:
             row_values = ' '.join([str(v) for k, v in row.items() if k != '_row' and v])
             row_values_lower = row_values.lower()
@@ -447,6 +455,7 @@ class ExcelParserService:
             )
 
             if is_customer_row:
+                debug_customer_rows_found += 1
                 # Müşteri bilgisini parse et
                 for col, val in row.items():
                     if col == '_row':
@@ -526,6 +535,7 @@ class ExcelParserService:
 
             # Header satırını atla - Türkçe karakter varyasyonları
             if 'ürün kodu' in row_values_lower or 'urun kodu' in row_values_lower:
+                debug_header_rows_found += 1
                 # Dinamik olarak sütunları bul
                 logger.info(f"Found header row, detecting columns...")
                 for col, val in row.items():
@@ -557,6 +567,7 @@ class ExcelParserService:
             if not product_code or not product_code[0].isdigit():
                 continue
 
+            debug_product_rows_found += 1
             product_name = row.get(col_map['product_name'], '').strip()
             sale_date_str = row.get(col_map['date'], '')
             quantity_str = row.get(col_map['quantity'], '1')
@@ -621,11 +632,17 @@ class ExcelParserService:
                 failed += 1
                 continue
 
-        logger.info(f"Sales parse complete: transactions={transactions_created}, products={products_created}, customers={customers_created}, failed={failed}")
+        logger.info(f"Sales parse complete: total_rows={debug_total_rows}, customer_rows={debug_customer_rows_found}, header_rows={debug_header_rows_found}, product_rows={debug_product_rows_found}")
+        logger.info(f"Sales parse results: transactions={transactions_created}, products={products_created}, customers={customers_created}, failed={failed}")
 
         return {
             'rows_processed': transactions_created + products_created + customers_created,
             'transactions_created': transactions_created,
+            # Debug info
+            'debug_total_rows': debug_total_rows,
+            'debug_customer_rows': debug_customer_rows_found,
+            'debug_header_rows': debug_header_rows_found,
+            'debug_product_rows': debug_product_rows_found,
             'products_created': products_created,
             'customers_created': customers_created,
             'rows_failed': failed,
