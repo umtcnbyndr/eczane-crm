@@ -7,7 +7,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CustomerViewSet, ProductViewSet, SalesTransactionViewSet,
     StaffViewSet, TaskViewSet, ExcelUploadView, ExcelUploadListView,
-    DashboardView, generate_replenishment_tasks, update_customer_segments
+    DashboardView, ResetDataView, generate_replenishment_tasks, update_customer_segments
 )
 
 router = DefaultRouter()
@@ -24,4 +24,5 @@ urlpatterns = [
     path('uploads/', ExcelUploadListView.as_view(), name='excel-upload-list'),
     path('generate-tasks/', generate_replenishment_tasks, name='generate-tasks'),
     path('update-segments/', update_customer_segments, name='update-segments'),
+    path('reset-data/', ResetDataView.as_view(), name='reset-data'),
 ]

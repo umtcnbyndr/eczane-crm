@@ -287,6 +287,39 @@ class ExcelUploadListView(APIView):
         return Response(serializer.data)
 
 
+class ResetDataView(APIView):
+    """Tüm verileri sil - TEST İÇİN."""
+
+    def post(self, request):
+        # Silme işlemi
+        transactions_count = SalesTransaction.objects.count()
+        SalesTransaction.objects.all().delete()
+
+        products_count = Product.objects.count()
+        Product.objects.all().delete()
+
+        customers_count = Customer.objects.count()
+        Customer.objects.all().delete()
+
+        uploads_count = ExcelUpload.objects.count()
+        ExcelUpload.objects.all().delete()
+
+        # Görevleri de sil
+        tasks_count = Task.objects.count()
+        Task.objects.all().delete()
+
+        return Response({
+            'message': 'Tüm veriler silindi',
+            'deleted': {
+                'transactions': transactions_count,
+                'products': products_count,
+                'customers': customers_count,
+                'uploads': uploads_count,
+                'tasks': tasks_count,
+            }
+        })
+
+
 class DashboardView(APIView):
     """Dashboard istatistikleri."""
 
