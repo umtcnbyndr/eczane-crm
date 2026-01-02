@@ -473,13 +473,20 @@ class ExcelParserService:
                                         last_name = ''
 
                                     try:
-                                        logger.info(f"Looking for customer: first_name='{first_name}', last_name='{last_name}'")
+                                        logger.info(f"Looking for customer: first_name='{first_name}', last_name='{last_name}', code='{customer_code}'")
 
-                                        # Try to find customer by name (first + last)
+                                        # First try to find by TRIA customer code
+                                        tria_code = f"TRIA{customer_code}"
                                         current_customer = Customer.objects.filter(
-                                            first_name__iexact=first_name,
-                                            last_name__iexact=last_name
+                                            customer_code=tria_code
                                         ).first()
+
+                                        # If not found, try by name (first + last)
+                                        if not current_customer:
+                                            current_customer = Customer.objects.filter(
+                                                first_name__iexact=first_name,
+                                                last_name__iexact=last_name
+                                            ).first()
 
                                         # If not found, try by full name in first_name field
                                         if not current_customer:
@@ -493,21 +500,26 @@ class ExcelParserService:
                                                 first_name__icontains=first_name
                                             ).first()
 
-                                        # If still not found, create new customer
+                                        # If still not found, create new customer using get_or_create
                                         if not current_customer:
-                                            current_customer = Customer.objects.create(
-                                                customer_code=f"TRIA{customer_code}",
-                                                first_name=first_name,
-                                                last_name=last_name
+                                            current_customer, created = Customer.objects.get_or_create(
+                                                customer_code=tria_code,
+                                                defaults={
+                                                    'first_name': first_name,
+                                                    'last_name': last_name
+                                                }
                                             )
-                                            customers_created += 1
-                                            logger.info(f"Created new customer: {first_name} {last_name}")
+                                            if created:
+                                                customers_created += 1
+                                                logger.info(f"Created new customer: {first_name} {last_name} ({tria_code})")
+                                            else:
+                                                logger.info(f"Found existing customer by code: {tria_code}")
                                         else:
                                             logger.info(f"Found existing customer: {current_customer.first_name} {current_customer.last_name}")
 
                                         current_customer_code = customer_code
                                     except Exception as e:
-                                        logger.error(f"Error finding/creating customer: {e}")
+                                        logger.error(f"Error finding/creating customer '{first_name} {last_name}': {e}")
                                         current_customer = None
                         break
                 continue
