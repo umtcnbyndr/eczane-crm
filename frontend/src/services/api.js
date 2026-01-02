@@ -31,6 +31,10 @@ export const getVipCustomers = () => api.get('/customers/vip/');
 export const getProducts = (params = {}) => api.get('/products/', { params });
 export const getProduct = (id) => api.get(`/products/${id}/`);
 
+// Brands
+export const getBrands = (params = {}) => api.get('/brands/', { params });
+export const getBrand = (id) => api.get(`/brands/${id}/`);
+
 // Staff
 export const getStaff = () => api.get('/staff/');
 export const getLeaderboard = (period = 'weekly') => api.get('/staff/leaderboard/', { params: { period } });

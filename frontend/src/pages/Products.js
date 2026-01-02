@@ -34,6 +34,9 @@ function ProductCard({ product }) {
 
       <h3 className="font-semibold text-gray-900 line-clamp-2">{product.name}</h3>
 
+      {product.brand_name && (
+        <p className="text-xs text-primary-600 font-medium mt-1">{product.brand_name}</p>
+      )}
       <p className="text-xs text-gray-400 mt-1">Barkod: {product.barcode}</p>
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t">

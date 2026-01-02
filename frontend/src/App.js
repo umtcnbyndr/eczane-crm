@@ -7,12 +7,14 @@ import {
   CubeIcon,
   TrophyIcon,
   ArrowUpTrayIcon,
+  TagIcon,
 } from '@heroicons/react/24/outline';
 
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Customers from './pages/Customers';
 import Products from './pages/Products';
+import Brands from './pages/Brands';
 import Leaderboard from './pages/Leaderboard';
 import Upload from './pages/Upload';
 
@@ -21,6 +23,7 @@ const navigation = [
   { name: 'Görevler', href: '/tasks', icon: ClipboardDocumentListIcon },
   { name: 'Müşteriler', href: '/customers', icon: UsersIcon },
   { name: 'Ürünler', href: '/products', icon: CubeIcon },
+  { name: 'Markalar', href: '/brands', icon: TagIcon },
   { name: 'Liderlik', href: '/leaderboard', icon: TrophyIcon },
   { name: 'Veri Yükle', href: '/upload', icon: ArrowUpTrayIcon },
 ];
@@ -111,6 +114,7 @@ function App() {
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/brands" element={<Brands />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/upload" element={<Upload />} />
         </Routes>
