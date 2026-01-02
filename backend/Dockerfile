@@ -30,8 +30,9 @@ RUN python manage.py collectstatic --noinput || true
 # Expose port
 EXPOSE 8000
 
-# Create entrypoint script
-RUN echo '#!/bin/bash\npython manage.py migrate --noinput\nexec gunicorn --bind 0.0.0.0:8000 --workers 2 smartpharmacy.wsgi:application' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+# Copy and setup entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-# Run migrations and start gunicorn
+# Run entrypoint
 CMD ["/app/entrypoint.sh"]
