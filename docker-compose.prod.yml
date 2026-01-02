@@ -1,0 +1,66 @@
+version: '3.8'
+
+# Coolify Production Docker Compose
+# Environment variables Coolify panelinden ayarlanmalı
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-smartpharmacy}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: always
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY:?Secret key required}
+      - DB_NAME=${DB_NAME:-smartpharmacy}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:?Database password required}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+    expose:
+      - "8000"
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_static:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn --bind 0.0.0.0:8000 --workers 3 smartpharmacy.wsgi:application"
+    labels:
+      - "coolify.managed=true"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000/api}
+    restart: always
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    labels:
+      - "coolify.managed=true"
+
+volumes:
+  postgres_data:
+  backend_uploads:
+  backend_static:
