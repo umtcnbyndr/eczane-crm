@@ -576,6 +576,7 @@ class ExcelParserService:
                 continue
 
         return {
+            'rows_processed': transactions_created + products_created + customers_created,
             'transactions_created': transactions_created,
             'products_created': products_created,
             'customers_created': customers_created,
