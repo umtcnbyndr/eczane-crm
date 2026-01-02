@@ -311,6 +311,9 @@ class ExcelParserService:
     def parse_product_sales(self, filepath: str) -> dict:
         """
         Tria Grup Bazlı Ürün Satış Raporunu parse et.
+
+        Dosya yapısı:
+        A: SN, B: Barkod, C: Ürün Kodu, D: Ürün Adı, E: KDV
         """
         root = self._load_xlsx(filepath)
         rows = self._parse_rows_to_dict(root)
@@ -318,35 +321,49 @@ class ExcelParserService:
         created = 0
         updated = 0
         failed = 0
+        skipped = 0
 
-        # Veri satırlarını işle
+        # Sütun mapping - Tria formatı
+        col_map = {
+            'sn': 'A',
+            'barcode': 'B',
+            'product_code': 'C',
+            'product_name': 'D',
+            'kdv': 'E'
+        }
+
         for row in rows:
-            # Barkod sütununu bul
-            barcode = ''
-            name = ''
+            # SN sütunu sayı olmalı (veri satırı kontrolü)
+            sn = row.get(col_map['sn'], '').strip()
+            if not sn or not sn.isdigit():
+                skipped += 1
+                continue
 
-            for col, val in row.items():
-                if col == '_row':
-                    continue
-                # Barkod formatı: 13 haneli sayı veya 868... ile başlayan
-                if val and re.match(r'^\d{8,14}$', str(val).strip()):
-                    barcode = str(val).strip()
-                # Ürün adı genellikle uzun text
-                elif val and len(str(val)) > 10 and not val.isdigit():
-                    if not name:
-                        name = str(val).strip()
+            barcode = row.get(col_map['barcode'], '').strip()
+            product_code = row.get(col_map['product_code'], '').strip()
+            product_name = row.get(col_map['product_name'], '').strip()
 
-            if not barcode:
+            # Barkod veya ürün kodu olmalı
+            if not barcode and not product_code:
+                skipped += 1
+                continue
+
+            # Ürün adı yoksa atla
+            if not product_name:
+                skipped += 1
                 continue
 
             # Kategori tahmini
-            category = self._guess_category(name) if name else 'ILAC'
+            category = self._guess_category(product_name)
 
             try:
+                # Barkod veya ürün koduna göre oluştur/güncelle
+                lookup_field = barcode if barcode else product_code
                 product, is_created = Product.objects.update_or_create(
-                    barcode=barcode,
+                    barcode=lookup_field,
                     defaults={
-                        'name': name or f'Ürün {barcode}',
+                        'name': product_name,
+                        'product_code': product_code,
                         'category': category,
                     }
                 )
@@ -361,6 +378,7 @@ class ExcelParserService:
         return {
             'rows_processed': created + updated,
             'rows_failed': failed,
+            'rows_skipped': skipped,
             'created': created,
             'updated': updated
         }
