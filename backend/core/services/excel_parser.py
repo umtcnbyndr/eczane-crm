@@ -432,18 +432,30 @@ class ExcelParserService:
             'gross_sales': 'AJ'
         }
 
+        import logging
+        logger = logging.getLogger(__name__)
+
         for row in rows:
             row_values = ' '.join([str(v) for k, v in row.items() if k != '_row' and v])
+            row_values_lower = row_values.lower()
 
-            # Müşteri satırını bul
-            if 'Müsteri Kodu/Adı' in row_values or 'Müşteri Kodu' in row_values:
+            # Müşteri satırını bul - hem 's' hem 'ş' karakterini kontrol et
+            is_customer_row = (
+                'müsteri kodu' in row_values_lower or
+                'müşteri kodu' in row_values_lower or
+                'musteri kodu' in row_values_lower
+            )
+
+            if is_customer_row:
                 # Müşteri bilgisini parse et
                 for col, val in row.items():
                     if col == '_row':
                         continue
-                    if 'Müsteri Kodu/Adı' in str(val) or 'Müşteri Kodu' in str(val):
+                    val_str = str(val)
+                    val_lower = val_str.lower()
+                    if 'müsteri kodu' in val_lower or 'müşteri kodu' in val_lower or 'musteri kodu' in val_lower:
                         # Format: "Müsteri Kodu/Adı : 9990026886 ABDULLAH DİNÇER -  -"
-                        parts = str(val).split(':')
+                        parts = val_str.split(':')
                         if len(parts) >= 2:
                             customer_data = parts[1].strip()
                             customer_parts = customer_data.split()
@@ -461,13 +473,21 @@ class ExcelParserService:
                                         last_name = ''
 
                                     try:
+                                        logger.info(f"Looking for customer: first_name='{first_name}', last_name='{last_name}'")
+
                                         # Try to find customer by name (first + last)
                                         current_customer = Customer.objects.filter(
                                             first_name__iexact=first_name,
                                             last_name__iexact=last_name
                                         ).first()
 
-                                        # If not found, try by first name only
+                                        # If not found, try by full name in first_name field
+                                        if not current_customer:
+                                            current_customer = Customer.objects.filter(
+                                                first_name__iexact=full_name
+                                            ).first()
+
+                                        # If not found, try partial match on first name
                                         if not current_customer:
                                             current_customer = Customer.objects.filter(
                                                 first_name__icontains=first_name
@@ -481,36 +501,43 @@ class ExcelParserService:
                                                 last_name=last_name
                                             )
                                             customers_created += 1
+                                            logger.info(f"Created new customer: {first_name} {last_name}")
+                                        else:
+                                            logger.info(f"Found existing customer: {current_customer.first_name} {current_customer.last_name}")
 
                                         current_customer_code = customer_code
-                                    except Exception:
+                                    except Exception as e:
+                                        logger.error(f"Error finding/creating customer: {e}")
                                         current_customer = None
                         break
                 continue
 
-            # Header satırını atla
-            if 'Ürün Kodu' in row_values or 'Ürün Adı' in row_values:
+            # Header satırını atla - Türkçe karakter varyasyonları
+            if 'ürün kodu' in row_values_lower or 'urun kodu' in row_values_lower:
                 # Dinamik olarak sütunları bul
+                logger.info(f"Found header row, detecting columns...")
                 for col, val in row.items():
                     if col == '_row':
                         continue
                     val_str = str(val).strip().lower()
-                    if val_str == 'ürün kodu':
+                    if 'ürün kodu' in val_str or 'urun kodu' in val_str:
                         col_map['product_code'] = col
-                    elif val_str == 'ürün adı':
+                        logger.info(f"Product code column: {col}")
+                    elif 'ürün adı' in val_str or 'urun adi' in val_str:
                         col_map['product_name'] = col
+                        logger.info(f"Product name column: {col}")
                     elif 'tarih' in val_str:
                         col_map['date'] = col
-                    elif val_str == 'miktar':
+                    elif 'miktar' in val_str:
                         col_map['quantity'] = col
                     elif 'net' in val_str and 'sat' in val_str:
                         col_map['net_sales'] = col
-                    elif val_str == 'kdv tutar':
+                    elif 'kdv' in val_str:
                         col_map['kdv'] = col
                 continue
 
             # Toplam satırlarını atla
-            if 'Toplam' in row_values or 'Genel' in row_values:
+            if 'toplam' in row_values_lower or 'genel' in row_values_lower:
                 continue
 
             # Ürün satış verisi - ürün kodu varsa işle
@@ -553,6 +580,8 @@ class ExcelParserService:
                 )
                 if prod_created:
                     products_created += 1
+                    if products_created <= 5:
+                        logger.info(f"Created product: {product_code} - {product_name}")
 
                 # Satış kaydı oluştur
                 if current_customer:
@@ -570,10 +599,17 @@ class ExcelParserService:
                     # Müşteri puanını güncelle (her 1 TL = 1 puan varsayımı)
                     current_customer.total_points += net_sales
                     current_customer.save()
+                else:
+                    # Log when product is created but no customer for transaction
+                    if products_created <= 5:
+                        logger.warning(f"Product created but no current customer for transaction: {product_code}")
 
             except Exception as e:
+                logger.error(f"Error creating product/transaction: {e}")
                 failed += 1
                 continue
+
+        logger.info(f"Sales parse complete: transactions={transactions_created}, products={products_created}, customers={customers_created}, failed={failed}")
 
         return {
             'rows_processed': transactions_created + products_created + customers_created,
