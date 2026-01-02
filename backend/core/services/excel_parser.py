@@ -615,7 +615,7 @@ class ExcelParserService:
                         unit_price=unit_price,
                         total_amount=net_sales,
                         kdv_amount=kdv,
-                        transaction_date=sale_date,
+                        sale_date=sale_date,
                     )
                     transactions_created += 1
 
