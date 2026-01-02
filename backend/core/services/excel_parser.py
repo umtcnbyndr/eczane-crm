@@ -461,12 +461,20 @@ class ExcelParserService:
                                         last_name = ''
 
                                     try:
+                                        # Try to find customer by name (first + last)
                                         current_customer = Customer.objects.filter(
-                                            customer_code__contains=customer_code
+                                            first_name__iexact=first_name,
+                                            last_name__iexact=last_name
                                         ).first()
 
+                                        # If not found, try by first name only
                                         if not current_customer:
-                                            # Yeni müşteri oluştur
+                                            current_customer = Customer.objects.filter(
+                                                first_name__icontains=first_name
+                                            ).first()
+
+                                        # If still not found, create new customer
+                                        if not current_customer:
                                             current_customer = Customer.objects.create(
                                                 customer_code=f"TRIA{customer_code}",
                                                 first_name=first_name,
